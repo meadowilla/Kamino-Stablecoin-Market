@@ -13,7 +13,6 @@ import {Program, AnchorProvider} from "@project-serum/anchor";
 const wallet = anchor.web3.Keypair.fromSecretKey(
   new Uint8Array(JSON.parse(fs.readFileSync('phantom-mainnet-keypair.json', 'utf8')))
 );
-console.log("hi0");
 
 // Create connection
 const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
@@ -21,15 +20,11 @@ const provider = new AnchorProvider(connection, new anchor.Wallet(wallet), {
   commitment: 'confirmed',
 });
 
-console.log('hi1');
-
 // Load the program
 const PROGRAM_IDS = {
   kaminoLending: new PublicKey('KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD'),
   kaminoFarm: new PublicKey('FarmsPZpWu9i7Kky8tPN37rs2TpmMrAZrC7S7vJa91Hr'),
 }
-
-console.log('hi2');
 
 const TOKEN_MINTS = {
   usdcMint: new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'),
@@ -46,10 +41,8 @@ const KAMINO_FARM_ACCOUNTS = {
         PROGRAM_IDS.kaminoFarm
     )[0],
 }
-console.log('hi3');
 
 const kaminoLendingProgram: Program<KaminoLending> = new Program(kaminoLendingIdl as any, PROGRAM_IDS.kaminoLending, provider);
-console.log('hi4');
 
 const KAMINO_LENDING_ACCOUNTS = {
   lendingMarket: new PublicKey("DxXdAyU3kCjnyggvHmY5nAwg5cRbbmdyX3npfDMjjMek"),
@@ -79,7 +72,6 @@ const KAMINO_LENDING_ACCOUNTS = {
         PROGRAM_IDS.kaminoLending
     )[0],
 }
-console.log('hi5');
 console.log("Obligation Address:", KAMINO_LENDING_ACCOUNTS.obligation(provider.wallet.publicKey, KAMINO_LENDING_ACCOUNTS.lendingMarket).toBase58());
 
 const createUserLookupTable = async () => {
@@ -172,7 +164,6 @@ const depositReserveLiquidityAndObligationCollateralV2 = async (amount: BN) => {
   .rpc();
   console.log("Transaction depositing signature:", tx);
 }
-console.log('hi6');
 
 const withdrawObligationCollateralAndRedeemReserveCollateralV2 = async (collateralAmount: BN) => {
   const tx = await kaminoLendingProgram.methods.withdrawObligationCollateralAndRedeemReserveCollateralV2(collateralAmount)
@@ -202,7 +193,6 @@ const withdrawObligationCollateralAndRedeemReserveCollateralV2 = async (collater
   .rpc();
   console.log("Transaction withdrawing signature:", tx);
 }
-console.log('hi7');
 
 (async () => {
   console.log("Balance of USDC:", (await connection.getTokenAccountBalance(getAssociatedTokenAddressSync(TOKEN_MINTS.usdcMint, provider.wallet.publicKey))));
@@ -221,20 +211,21 @@ console.log('hi7');
     // Itialize obligation if it doesn't exist
     const obligationAddress = KAMINO_LENDING_ACCOUNTS.obligation(provider.wallet.publicKey, KAMINO_LENDING_ACCOUNTS.lendingMarket);
     const obligationInfo = await kaminoLendingProgram.account.obligation.fetchNullable(obligationAddress);
+    console.log("obligationInfo:", obligationInfo);
     if (!obligationInfo) {
       console.log("Obligation does not exist, initializing...");
       await initObligation();
     }
 
-    // Initalize obligation farms for reserve if it doesn't exist
-    await initObligationFarmsForReserve();
+    // // Initalize obligation farms for reserve if it doesn't exist
+    // await initObligationFarmsForReserve();
 
-    // Deposit USDC
-    const depositAmount = new BN(500000); // 0.5 USDC in smallest unit (6 decimals)
-    console.log(`Depositing ${depositAmount.toString()} USDC...`);
-    await depositReserveLiquidityAndObligationCollateralV2(depositAmount);
+    // // Deposit USDC
+    // const depositAmount = new BN(500000); // 0.5 USDC in smallest unit (6 decimals)
+    // console.log(`Depositing ${depositAmount.toString()} USDC...`);
+    // await depositReserveLiquidityAndObligationCollateralV2(depositAmount);
   
-    // Withdraw USDC
+    // // Withdraw USDC
     // const withdrawAmount = new BN(200000); // 0.2 USDC in smallest unit (6 decimals)
     // console.log(`Withdrawing ${withdrawAmount.toString()} USDC...`);
     // await withdrawObligationCollateralAndRedeemReserveCollateralV2(withdrawAmount);
