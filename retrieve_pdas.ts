@@ -120,49 +120,49 @@ reserveFarmStates.set("Main Market", new Map([
   ["PYUSD", new PublicKey("GmJ2vXsDt8R5DNimAZc7Rtphr4oqecBVAx1psaTcVtrX")], 
 ]));
 reserveFarmStates.set("JPL Market", new Map([
-  ["USDC", new PublicKey("")], // ???
-  ["USDT", new PublicKey("")], // ???
-  ["PYUSD", new PublicKey("")], // ???
-  ["USDG", new PublicKey("")], // ???
+  ["USDC", new PublicKey("EGDhupegCXLtonYDSY67c4dzw86S9eMxsntQ1yxWSoHv")], 
+  ["USDT", new PublicKey("KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD")], 
+  ["PYUSD", new PublicKey("6HureeaY2WxT5GNTDvK9zFrHsEMAMJXQ5q4Mm9nYapcP")], 
+  ["USDG", new PublicKey("6c7ZLu9SfLSoyCGxa3egiFLHEYBMnHgc2Cz45z8XtDoK")], 
 ]));
 reserveFarmStates.set("Adrena Market", new Map([
-  ["USDC", new PublicKey("")], // ???
+  ["USDC", new PublicKey("2aEQ5vxCQzuJd7DQtDtvEUnBpAdWyTNmXswUvNyrf2du")], 
 ]));
 reserveFarmStates.set("Fartcoin Market", new Map([
-  ["USDC", new PublicKey("")], // ???
-  ["USDT", new PublicKey("")], // ???
+  ["USDC", new PublicKey("KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD")], 
+  ["USDT", new PublicKey("KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD")], 
 ]));
 reserveFarmStates.set("BONK Market", new Map([
-  ["USDC", new PublicKey("")], // ???
-  ["USDT", new PublicKey("")], // ???
-  ["USDG", new PublicKey("")], // ???
+  ["USDC", new PublicKey("KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD")], 
+  ["USDT", new PublicKey("68YJhNPTss8kjotHxLqKBGW3wemPXFUJXcYPApVz6S7a")], 
+  ["USDG", new PublicKey("2EdJeBbXQyRcDioYTgJVr95YsdppyNxwD2U2eKFkUAsm")], 
 ]));
 reserveFarmStates.set("Bitcoin Market", new Map([
-  ["USDC", new PublicKey("")], // ???
-  ["FDUSD", new PublicKey("")], // ???
-  ["USDT", new PublicKey("")], // ???
-  ["USDG", new PublicKey("")], // ???
+  ["USDC", new PublicKey("KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD")], 
+  ["FDUSD", new PublicKey("KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD")], 
+  ["USDT", new PublicKey("5hXwbVE6nuHPhgADwDLD2EKf7wgs5N7aMszsYupAPKxW")], 
+  ["USDG", new PublicKey("9UKBVzy3onM5vPpUC3mMwTadhWGzj1YX2dimCtwXUVvv")], 
 ]));
 reserveFarmStates.set("JTO Market", new Map([
-  ["USDC", new PublicKey("")], // ???
-  ["USDT", new PublicKey("")], // ???
-  ["USDG", new PublicKey("")], // ??? 
+  ["USDC", new PublicKey("KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD")], 
+  ["USDT", new PublicKey("6LAeL4asiwHK89FxnoWiKxLseqAYjFhv4VZWaxsH9KTz")], 
+  ["USDG", new PublicKey("GSTnd4Cxtm8j9ibQv3rx9x1QcgGcuob26zKqi6vpUsC8")],  
 ]));
 reserveFarmStates.set("Jupiter Market", new Map([
-  ["USDC", new PublicKey("")], // ???
-  ["USDT", new PublicKey("")], // ???
-  ["USDG", new PublicKey("")], // ???
+  ["USDC", new PublicKey("KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD")], 
+  ["USDT", new PublicKey("3qL9odbanz1gJdAxu8snMN7VUbP8uDJnQ5hExiTkrCPz")], 
+  ["USDG", new PublicKey("5SToJRWDATd4q46Y9EBrfEemHQv3x3SCeigh5BKKoGoz")], 
 ]));
 reserveFarmStates.set("Ethena Market", new Map([
-  ["USDE", new PublicKey("")], // ???
-  ["PYUSD", new PublicKey("")], // ???
+  ["USDE", new PublicKey("DaSKFFNNWCJ4D6ERQwZ5RsRMTZ1HEZxCEFcHcqQ2QuGU")], 
+  ["PYUSD", new PublicKey("CAdMwteM7p6Gj8pEyyk9FbHVZPsAgcyapLWgbreCtmD9")], 
 ]));
 reserveFarmStates.set("Altcoin Market", new Map([
-  ["USDC", new PublicKey("")], // ???
+  ["USDC", new PublicKey("23UsLhyeuZBCRJNVFkPrmMCfXuka8hQa8S6spXwTEHcc")], 
 ]));
 reserveFarmStates.set("Apolo Market", new Map([
-  ["USDC", new PublicKey("")], // ???   
-  ["USDG", new PublicKey("")], // ???
+  ["USDC", new PublicKey("KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD")],    
+  ["USDG", new PublicKey("")], // Too new to have depositing transactions, so no farm state yet
 ]));
 
 export function getLendingMarketAuthPDA(programId: PublicKey, lendingMarket: PublicKey): PublicKey {
