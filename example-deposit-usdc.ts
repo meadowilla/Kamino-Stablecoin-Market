@@ -47,6 +47,7 @@ const kaminoLendingProgram: Program<KaminoLending> = new Program(kaminoLendingId
 const KAMINO_LENDING_ACCOUNTS = {
   lendingMarket: new PublicKey("DxXdAyU3kCjnyggvHmY5nAwg5cRbbmdyX3npfDMjjMek"),
   usdcReserve: new PublicKey("Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp"),
+  scopePrices: new PublicKey("3NJYftD5sjVfxSnUdZ1wVML8f3aC6mp1CXCL6L7TnU8C"),
   usdcLendingMarketAuthority: new PublicKey("B9spsrMK6pJicYtukaZzDyzsUQLgc3jbx5gHVwdDxb6y"),
   usdcReserveLiquiditySupply: new PublicKey("GENey8es3EgGiNTM8H8gzA3vf98haQF8LHiYFyErjgrv"),
   usdcReserveCollateralMint: new PublicKey("32XLsweyeQwWgLKRVAzS72nxHGU1JmmNQQZ3C3q6fBjJ"),
@@ -194,6 +195,59 @@ const withdrawObligationCollateralAndRedeemReserveCollateralV2 = async (collater
   console.log("Transaction withdrawing signature:", tx);
 }
 
+const refreshReserve = async() => {
+  const tx = await kaminoLendingProgram.methods.refreshReserve()
+    .accounts({
+      reserve: KAMINO_LENDING_ACCOUNTS.usdcReserve,
+      lendingMarket: KAMINO_LENDING_ACCOUNTS.lendingMarket,
+      pythOracle: PROGRAM_IDS.kaminoLending,
+      switchboardPriceOracle: PROGRAM_IDS.kaminoLending,
+      switchboardTwapOracle: PROGRAM_IDS.kaminoLending,
+      scopePrices: KAMINO_LENDING_ACCOUNTS.scopePrices,
+    })
+    .rpc();
+  console.log("Transaction refreshing reserve signature:", tx);
+}
+
+const refreshObligation = async () => {
+  const obligation = await kaminoLendingProgram.account.obligation.fetch(KAMINO_LENDING_ACCOUNTS.obligation(provider.wallet.publicKey, KAMINO_LENDING_ACCOUNTS.lendingMarket)) as any;
+
+  let isVaultExhausted: boolean;
+  if (obligation.deposits[0].depositedAmount == 0) {
+    isVaultExhausted = true;  
+  } else {
+    isVaultExhausted = false;
+  }
+  const tx = await kaminoLendingProgram.methods.refreshObligation()
+    .accounts({
+      lendingMarket: KAMINO_LENDING_ACCOUNTS.lendingMarket,
+      obligation: KAMINO_LENDING_ACCOUNTS.obligation(provider.wallet.publicKey, KAMINO_LENDING_ACCOUNTS.lendingMarket),
+    })
+    .remainingAccounts(isVaultExhausted ? [] : [{pubkey:KAMINO_LENDING_ACCOUNTS.usdcReserve, isWritable: true, isSigner: false}])
+    .rpc();
+  console.log("Transaction refreshing obligation signature:", tx);
+}
+
+const refreshObligationFarmsForReserve = async () => {
+  const tx = await kaminoLendingProgram.methods.refreshObligationFarmsForReserve(0)
+    .accounts({
+      crank: provider.wallet.publicKey,
+      baseAccounts: {
+        obligation: KAMINO_LENDING_ACCOUNTS.obligation(provider.wallet.publicKey, KAMINO_LENDING_ACCOUNTS.lendingMarket),
+        lendingMarketAuthority: KAMINO_LENDING_ACCOUNTS.usdcLendingMarketAuthority,
+        lendingMarket: KAMINO_LENDING_ACCOUNTS.lendingMarket,
+        reserve: KAMINO_LENDING_ACCOUNTS.usdcReserve,
+        reserveFarmState: KAMINO_FARM_ACCOUNTS.usdcReserveFarmState,
+        obligationFarmUserState: KAMINO_FARM_ACCOUNTS.obligationFarm(KAMINO_LENDING_ACCOUNTS.obligation(provider.wallet.publicKey, KAMINO_LENDING_ACCOUNTS.lendingMarket), KAMINO_FARM_ACCOUNTS.usdcReserveFarmState),
+      },
+      farmsProgram: PROGRAM_IDS.kaminoFarm,
+      rent: SYSVAR_RENT_PUBKEY,
+      systemProgram: SYSTEM_PROGRAM_ID,
+    })
+    .rpc();
+  console.log("Transaction refreshing obligation farms for reserve signature:", tx);
+}
+
 (async () => {
   console.log("Balance of USDC:", (await connection.getTokenAccountBalance(getAssociatedTokenAddressSync(TOKEN_MINTS.usdcMint, provider.wallet.publicKey))));
   try {
@@ -212,17 +266,30 @@ const withdrawObligationCollateralAndRedeemReserveCollateralV2 = async (collater
     const obligationAddress = KAMINO_LENDING_ACCOUNTS.obligation(provider.wallet.publicKey, KAMINO_LENDING_ACCOUNTS.lendingMarket);
     const obligationInfo = await kaminoLendingProgram.account.obligation.fetchNullable(obligationAddress);
     console.log("obligationInfo:", obligationInfo);
-    if (!obligationInfo) {
-      console.log("Obligation does not exist, initializing...");
-      await initObligation();
-    }
+    // if (!obligationInfo) {
+    //   console.log("Obligation does not exist, initializing...");
+    //   await initObligation();
+    // }
 
-    // // Initalize obligation farms for reserve if it doesn't exist
+    // Initalize obligation farms for reserve if it doesn't exist
     // await initObligationFarmsForReserve();
 
-    // // Deposit USDC
+    // await refreshReserve();
+    // console.log("Reserve refreshed successfully.");
+    // await refreshObligation();
+    // console.log("Obligation refreshed successfully.");
+    // // Refresh reserve to ensure it's up-to-date
+    // await refreshReserve();
+    // await refreshObligation();
+
+
+    // await refreshReserve();
+    // await refreshReserve();
+
+    // Deposit USDC
     // const depositAmount = new BN(500000); // 0.5 USDC in smallest unit (6 decimals)
     // console.log(`Depositing ${depositAmount.toString()} USDC...`);
+  
     // await depositReserveLiquidityAndObligationCollateralV2(depositAmount);
   
     // // Withdraw USDC

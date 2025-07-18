@@ -13,7 +13,7 @@ const BASE_SEED_REFERRER_TOKEN_STATE = Buffer.from("referrer_acc");
 const GLOBAL_CONFIG_STATE = Buffer.from("global_config");
 
 const programId = new PublicKey("KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD");
-const farmProgramId = new PublicKey("FarmsPZpWu9i7Kky8tPN37rs2TpmMrAZrC7S7vJa91Hr");
+// const farmProgramId = new PublicKey("FarmsPZpWu9i7Kky8tPN37rs2TpmMrAZrC7S7vJa91Hr");
 const market = new PublicKey("DxXdAyU3kCjnyggvHmY5nAwg5cRbbmdyX3npfDMjjMek");
 const mint = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
 
@@ -162,17 +162,17 @@ reserveFarmStates.set("Altcoin Market", new Map([
 ]));
 reserveFarmStates.set("Apolo Market", new Map([
   ["USDC", new PublicKey("KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD")],    
-  ["USDG", new PublicKey("")], // Too new to have depositing transactions, so no farm state yet
+  // ["USDG", new PublicKey("")], // Too new to have depositing transactions, so no farm state yet
 ]));
 
-export function getLendingMarketAuthPDA(programId: PublicKey, lendingMarket: PublicKey): PublicKey {
+function getLendingMarketAuthPDA(programId: PublicKey, lendingMarket: PublicKey): PublicKey {
   return PublicKey.findProgramAddressSync(
     [LENDING_MARKET_AUTH, lendingMarket.toBuffer()],
     programId
   )[0];
 }
 
-export function getInitReservePdas(programId: PublicKey, market: PublicKey, mint: PublicKey) {
+function getInitReservePdas(programId: PublicKey, market: PublicKey, mint: PublicKey) {
   const feeVault = PublicKey.findProgramAddressSync(
     [FEE_RECEIVER, market.toBuffer(), mint.toBuffer()],
     programId
@@ -201,14 +201,14 @@ export function getInitReservePdas(programId: PublicKey, market: PublicKey, mint
   };
 }
 
-function getReferrerTokenStatePDA(programId: PublicKey, referrer: PublicKey, reserve: PublicKey): PublicKey {
-  return PublicKey.findProgramAddressSync(
-    [BASE_SEED_REFERRER_TOKEN_STATE, referrer.toBuffer(), reserve.toBuffer()],
-    programId
-  )[0];
-}
+// function getReferrerTokenStatePDA(programId: PublicKey, referrer: PublicKey, reserve: PublicKey): PublicKey {
+//   return PublicKey.findProgramAddressSync(
+//     [BASE_SEED_REFERRER_TOKEN_STATE, referrer.toBuffer(), reserve.toBuffer()],
+//     programId
+//   )[0];
+// }
 
-export function getObligationPDA(authority: PublicKey, market: PublicKey): PublicKey {
+function getObligationPDA(authority: PublicKey, market: PublicKey): PublicKey {
   return PublicKey.findProgramAddressSync(
     [
       Buffer.from([0]),
