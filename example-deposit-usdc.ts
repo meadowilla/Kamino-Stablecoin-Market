@@ -2,11 +2,11 @@ import * as anchor from '@coral-xyz/anchor';
 import { AddressLookupTableProgram, Connection, PublicKey, SYSVAR_INSTRUCTIONS_PUBKEY, SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
 import * as fs from 'fs';
 import { SYSTEM_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/native/system";
-import {getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID} from "@solana/spl-token";
-import kaminoLendingIdl from './kamino_lending.json';
-import { KaminoLending } from './kamino_lending';
-import {BN} from '@coral-xyz/anchor';
-import {Program, AnchorProvider} from "@project-serum/anchor";
+import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import kaminoLendingIdl from './target/idl/kamino_lending.json';
+import { KaminoLending } from './target/types/kamino_lending';
+import { BN } from '@coral-xyz/anchor';
+import { Program, AnchorProvider } from "@project-serum/anchor";
 
 
 // Load keypair
@@ -31,15 +31,15 @@ const TOKEN_MINTS = {
 }
 
 const KAMINO_FARM_ACCOUNTS = {
-    usdcReserveFarmState: new PublicKey("EGDhupegCXLtonYDSY67c4dzw86S9eMxsntQ1yxWSoHv"),
-    obligationFarm: (obligation: PublicKey, reserveFarmState: PublicKey) => PublicKey.findProgramAddressSync(
-        [
-            Buffer.from("user"),
-            reserveFarmState.toBuffer(),
-            obligation.toBuffer(),
-        ],
-        PROGRAM_IDS.kaminoFarm
-    )[0],
+  usdcReserveFarmState: new PublicKey("EGDhupegCXLtonYDSY67c4dzw86S9eMxsntQ1yxWSoHv"),
+  obligationFarm: (obligation: PublicKey, reserveFarmState: PublicKey) => PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("user"),
+      reserveFarmState.toBuffer(),
+      obligation.toBuffer(),
+    ],
+    PROGRAM_IDS.kaminoFarm
+  )[0],
 }
 
 const kaminoLendingProgram: Program<KaminoLending> = new Program(kaminoLendingIdl as any, PROGRAM_IDS.kaminoLending, provider);
@@ -54,23 +54,23 @@ const KAMINO_LENDING_ACCOUNTS = {
   usdcReserveCollateral: new PublicKey("6WnymZBTAekuHf9DgsaDKJ397oEZ3qMApNMHg9qjqhgm"),
   userMetadata: (authority: PublicKey) =>
     PublicKey.findProgramAddressSync(
-        [
-            Buffer.from('user_meta'),
-            authority.toBuffer(),
-        ],
-        PROGRAM_IDS.kaminoLending
+      [
+        Buffer.from('user_meta'),
+        authority.toBuffer(),
+      ],
+      PROGRAM_IDS.kaminoLending
     )[0],
   obligation: (authority: PublicKey, lendingMarket: PublicKey) =>
     PublicKey.findProgramAddressSync(
-        [
-            Buffer.from([0]),
-            Buffer.from([0]),
-            authority.toBuffer(),
-            lendingMarket.toBuffer(),
-            SYSTEM_PROGRAM_ID.toBuffer(),
-            SYSTEM_PROGRAM_ID.toBuffer()
-        ],
-        PROGRAM_IDS.kaminoLending
+      [
+        Buffer.from([0]),
+        Buffer.from([0]),
+        authority.toBuffer(),
+        lendingMarket.toBuffer(),
+        SYSTEM_PROGRAM_ID.toBuffer(),
+        SYSTEM_PROGRAM_ID.toBuffer()
+      ],
+      PROGRAM_IDS.kaminoLending
     )[0],
 }
 console.log("Obligation Address:", KAMINO_LENDING_ACCOUNTS.obligation(provider.wallet.publicKey, KAMINO_LENDING_ACCOUNTS.lendingMarket).toBase58());
@@ -102,7 +102,7 @@ const initUserMetadata = async (userLookupTable: PublicKey) => {
 
 
 const initObligation = async () => {
-  const tx = await kaminoLendingProgram.methods.initObligation({tag: 0, id: 0})
+  const tx = await kaminoLendingProgram.methods.initObligation({ tag: 0, id: 0 })
     .accounts({
       obligationOwner: provider.wallet.publicKey,
       feePayer: provider.wallet.publicKey,
@@ -139,37 +139,37 @@ const initObligationFarmsForReserve = async () => {
 
 const depositReserveLiquidityAndObligationCollateralV2 = async (amount: BN) => {
   const tx = await kaminoLendingProgram.methods.depositReserveLiquidityAndObligationCollateralV2(amount)
-  .accounts({
-    depositAccounts: {
-      owner: provider.wallet.publicKey,
-      obligation: KAMINO_LENDING_ACCOUNTS.obligation(provider.wallet.publicKey, KAMINO_LENDING_ACCOUNTS.lendingMarket),
-      lendingMarket: KAMINO_LENDING_ACCOUNTS.lendingMarket,
-      lendingMarketAuthority: KAMINO_LENDING_ACCOUNTS.usdcLendingMarketAuthority,
-      reserve: KAMINO_LENDING_ACCOUNTS.usdcReserve,
-      reserveLiquidityMint: TOKEN_MINTS.usdcMint,
-      reserveLiquiditySupply: KAMINO_LENDING_ACCOUNTS.usdcReserveLiquiditySupply,
-      reserveCollateralMint: KAMINO_LENDING_ACCOUNTS.usdcReserveCollateralMint,
-      reserveDestinationDepositCollateral: KAMINO_LENDING_ACCOUNTS.usdcReserveCollateral,
-      userSourceLiquidity: getAssociatedTokenAddressSync(TOKEN_MINTS.usdcMint, provider.wallet.publicKey),
-      placeholderUserDestinationCollateral: PROGRAM_IDS.kaminoLending,
-      collateralTokenProgram: TOKEN_PROGRAM_ID,
-      liquidityTokenProgram: TOKEN_PROGRAM_ID,
-      instructionSysvarAccount: SYSVAR_INSTRUCTIONS_PUBKEY
-    },
-    farmsAccounts: {
-      obligationFarmUserState: KAMINO_FARM_ACCOUNTS.obligationFarm(KAMINO_LENDING_ACCOUNTS.obligation(provider.wallet.publicKey, KAMINO_LENDING_ACCOUNTS.lendingMarket), KAMINO_FARM_ACCOUNTS.usdcReserveFarmState),
-      reserveFarmState: KAMINO_FARM_ACCOUNTS.usdcReserveFarmState,
-    },
-    farmsProgram: PROGRAM_IDS.kaminoFarm
-  })
-  .rpc();
+    .accounts({
+      depositAccounts: {
+        owner: provider.wallet.publicKey,
+        obligation: KAMINO_LENDING_ACCOUNTS.obligation(provider.wallet.publicKey, KAMINO_LENDING_ACCOUNTS.lendingMarket),
+        lendingMarket: KAMINO_LENDING_ACCOUNTS.lendingMarket,
+        lendingMarketAuthority: KAMINO_LENDING_ACCOUNTS.usdcLendingMarketAuthority,
+        reserve: KAMINO_LENDING_ACCOUNTS.usdcReserve,
+        reserveLiquidityMint: TOKEN_MINTS.usdcMint,
+        reserveLiquiditySupply: KAMINO_LENDING_ACCOUNTS.usdcReserveLiquiditySupply,
+        reserveCollateralMint: KAMINO_LENDING_ACCOUNTS.usdcReserveCollateralMint,
+        reserveDestinationDepositCollateral: KAMINO_LENDING_ACCOUNTS.usdcReserveCollateral,
+        userSourceLiquidity: getAssociatedTokenAddressSync(TOKEN_MINTS.usdcMint, provider.wallet.publicKey),
+        placeholderUserDestinationCollateral: PROGRAM_IDS.kaminoLending,
+        collateralTokenProgram: TOKEN_PROGRAM_ID,
+        liquidityTokenProgram: TOKEN_PROGRAM_ID,
+        instructionSysvarAccount: SYSVAR_INSTRUCTIONS_PUBKEY
+      },
+      farmsAccounts: {
+        obligationFarmUserState: KAMINO_FARM_ACCOUNTS.obligationFarm(KAMINO_LENDING_ACCOUNTS.obligation(provider.wallet.publicKey, KAMINO_LENDING_ACCOUNTS.lendingMarket), KAMINO_FARM_ACCOUNTS.usdcReserveFarmState),
+        reserveFarmState: KAMINO_FARM_ACCOUNTS.usdcReserveFarmState,
+      },
+      farmsProgram: PROGRAM_IDS.kaminoFarm
+    })
+    .rpc();
   console.log("Transaction depositing signature:", tx);
 }
 
 const withdrawObligationCollateralAndRedeemReserveCollateralV2 = async (collateralAmount: BN) => {
   const tx = await kaminoLendingProgram.methods.withdrawObligationCollateralAndRedeemReserveCollateralV2(collateralAmount)
-  .accounts({
-    withdrawAccounts: {
+    .accounts({
+      withdrawAccounts: {
         owner: provider.wallet.publicKey,
         obligation: KAMINO_LENDING_ACCOUNTS.obligation(provider.wallet.publicKey, KAMINO_LENDING_ACCOUNTS.lendingMarket),
         lendingMarket: KAMINO_LENDING_ACCOUNTS.lendingMarket,
@@ -184,18 +184,18 @@ const withdrawObligationCollateralAndRedeemReserveCollateralV2 = async (collater
         collateralTokenProgram: TOKEN_PROGRAM_ID,
         liquidityTokenProgram: TOKEN_PROGRAM_ID,
         instructionSysvarAccount: SYSVAR_INSTRUCTIONS_PUBKEY
-    },
-    farmsAccounts: {
+      },
+      farmsAccounts: {
         obligationFarmUserState: KAMINO_FARM_ACCOUNTS.obligationFarm(KAMINO_LENDING_ACCOUNTS.obligation(provider.wallet.publicKey, KAMINO_LENDING_ACCOUNTS.lendingMarket), KAMINO_FARM_ACCOUNTS.usdcReserveFarmState),
         reserveFarmState: KAMINO_FARM_ACCOUNTS.usdcReserveFarmState,
-    },
-    farmsProgram: PROGRAM_IDS.kaminoFarm
-  })
-  .rpc();
+      },
+      farmsProgram: PROGRAM_IDS.kaminoFarm
+    })
+    .rpc();
   console.log("Transaction withdrawing signature:", tx);
 }
 
-const refreshReserve = async() => {
+const refreshReserve = async () => {
   const tx = await kaminoLendingProgram.methods.refreshReserve()
     .accounts({
       reserve: KAMINO_LENDING_ACCOUNTS.usdcReserve,
@@ -214,7 +214,7 @@ const refreshObligation = async () => {
 
   let isVaultExhausted: boolean;
   if (obligation.deposits[0].depositedAmount == 0) {
-    isVaultExhausted = true;  
+    isVaultExhausted = true;
   } else {
     isVaultExhausted = false;
   }
@@ -223,7 +223,7 @@ const refreshObligation = async () => {
       lendingMarket: KAMINO_LENDING_ACCOUNTS.lendingMarket,
       obligation: KAMINO_LENDING_ACCOUNTS.obligation(provider.wallet.publicKey, KAMINO_LENDING_ACCOUNTS.lendingMarket),
     })
-    .remainingAccounts(isVaultExhausted ? [] : [{pubkey:KAMINO_LENDING_ACCOUNTS.usdcReserve, isWritable: true, isSigner: false}])
+    .remainingAccounts(isVaultExhausted ? [] : [{ pubkey: KAMINO_LENDING_ACCOUNTS.usdcReserve, isWritable: true, isSigner: false }])
     .rpc();
   console.log("Transaction refreshing obligation signature:", tx);
 }
@@ -289,9 +289,9 @@ const refreshObligationFarmsForReserve = async () => {
     // Deposit USDC
     // const depositAmount = new BN(500000); // 0.5 USDC in smallest unit (6 decimals)
     // console.log(`Depositing ${depositAmount.toString()} USDC...`);
-  
+
     // await depositReserveLiquidityAndObligationCollateralV2(depositAmount);
-  
+
     // // Withdraw USDC
     // const withdrawAmount = new BN(200000); // 0.2 USDC in smallest unit (6 decimals)
     // console.log(`Withdrawing ${withdrawAmount.toString()} USDC...`);

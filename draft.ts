@@ -1,29 +1,37 @@
-import {getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID} from "@solana/spl-token";
-import { PublicKey, TransactionInstruction, SYSVAR_INSTRUCTIONS_PUBKEY, SYSVAR_RENT_PUBKEY, Connection } from "@solana/web3.js";
-import {markets, mints, reserves, reserveFarmStates} from "./retrieve_pdas";
-import {BN} from "@coral-xyz/anchor";
+import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { PublicKey, TransactionInstruction, SYSVAR_INSTRUCTIONS_PUBKEY, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
+import { markets, mints, reserves, reserveFarmStates, rewardMints } from "./retrieve_rand_addr";
+import { BN } from "@coral-xyz/anchor";
 import { Program, AnchorProvider } from "@project-serum/anchor";
 import { SYSTEM_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/native/system";
-import { KaminoLending } from "./kamino_lending";
+import { KaminoLending } from "./target/types/kamino_lending";
+import { KaminoFarming } from "./target/types/kamino_farming";
 
-export                                                                                                                                                                                                                                      class Kamino {
-    kaminoLending: PublicKey = new PublicKey("KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD");
-    kaminoFarm: PublicKey = new PublicKey("FarmsPZpWu9i7Kky8tPN37rs2TpmMrAZrC7S7vJa91Hr");
+export class Kamino {
+    kaminoLending: PublicKey;
+    kaminoFarming: PublicKey;
     scopePrices: PublicKey = new PublicKey("3NJYftD5sjVfxSnUdZ1wVML8f3aC6mp1CXCL6L7TnU8C");
-    program: Program<KaminoLending>;
+    globalConfig: PublicKey = new PublicKey("6UodrBjL2ZreDy7QdR4YV1oxqMBjVYSEyrFpctqqwGwL");
+    lendingProgram: Program<KaminoLending>;
+    farmingProgram: Program<KaminoFarming>;
     provider: AnchorProvider;
     market: PublicKey;
     mint: PublicKey;
     reserve: PublicKey; // per market, per mint
     reserveFarmState: PublicKey; // per reserve
+    rewardMint: PublicKey;
 
-    constructor(program: Program<KaminoLending>, provider: AnchorProvider, market: string, mint: string){
-        this.program = program;
+    constructor(lendingProgram: Program<KaminoLending>, farmingProgram: Program<KaminoFarming>, provider: AnchorProvider, market: string, mint: string) {
+        this.lendingProgram = lendingProgram;
+        this.farmingProgram = farmingProgram;
+        this.kaminoLending = lendingProgram.programId;
+        this.kaminoFarming = farmingProgram.programId;
         this.provider = provider;
         this.market = markets.get(market) ?? (() => { throw new Error(`Market not found: ${market}`); })();
         this.mint = mints.get(mint) ?? (() => { throw new Error(`Mint not found: ${mint}`); })();
         this.reserve = reserves.get(market)?.get(mint) ?? (() => { throw new Error(`Reserve not found for market: ${market}, mint: ${mint}`); })();
         this.reserveFarmState = reserveFarmStates.get(market)?.get(mint) ?? (() => { throw new Error(`Reserve farm state not found for market: ${market}, mint: ${mint}`); })();
+        this.rewardMint = rewardMints.get(market)?.get(mint)?? (() => { throw new Error(`Reward mint not found for market: ${market}`); })();
 
         // console.log("Kamino initialized with:");
         // console.log("Market:", this.market.toString());
@@ -38,7 +46,7 @@ export                                                                          
         // Refresh reserve
         console.log("Refreshing reserve...");
         instructions.push(
-            await this.program.methods.refreshReserve()
+            await this.lendingProgram.methods.refreshReserve()
                 .accounts({
                     reserve: this.reserve,
                     lendingMarket: this.market,
@@ -52,17 +60,17 @@ export                                                                          
 
         const obligation = this.obligation(); // per user, per market
         // console.log("Using obligation:", obligation.toString());
-        const obligationInfo = await this.program.account.obligation.fetchNullable(obligation);
+        const obligationInfo = await this.lendingProgram.account.obligation.fetchNullable(obligation);
 
         const obligationFarm = this.obligationFarm(obligation, this.reserveFarmState);
         // console.log("Using obligation farm:", obligationFarm.toString());
-        const obligationFarmInfo = await this.program.provider.connection.getAccountInfo(obligationFarm);
+        const obligationFarmInfo = await this.lendingProgram.provider.connection.getAccountInfo(obligationFarm);
         // console.log("Obligation farm info:", obligationFarmInfo);
 
         if (!obligationFarmInfo) {
             console.log("Obligation farm is not initialized, initializing now");
             instructions.push(
-                await this.program.methods.initObligationFarmsForReserve(0)
+                await this.lendingProgram.methods.initObligationFarmsForReserve(0)
                     .accounts({
                         payer: this.provider.wallet.publicKey,
                         owner: this.provider.wallet.publicKey,
@@ -72,7 +80,7 @@ export                                                                          
                         reserveFarmState: this.reserveFarmState,
                         obligationFarm: obligationFarm,
                         lendingMarket: this.market,
-                        farmsProgram: this.kaminoFarm,
+                        farmsProgram: this.kaminoFarming,
                         rent: SYSVAR_RENT_PUBKEY,
                         systemProgram: SYSTEM_PROGRAM_ID,
                     })
@@ -81,7 +89,7 @@ export                                                                          
         } else {
             console.log("Obligation farm is already initialized, refreshing now");
             instructions.push(
-                await this.program.methods.refreshObligationFarmsForReserve(0)
+                await this.lendingProgram.methods.refreshObligationFarmsForReserve(0)
                     .accounts({
                         crank: this.provider.wallet.publicKey,
                         baseAccounts: {
@@ -92,7 +100,7 @@ export                                                                          
                             reserveFarmState: this.reserveFarmState,
                             obligationFarmUserState: obligationFarm,
                         },
-                        farmsProgram: this.kaminoFarm,
+                        farmsProgram: this.kaminoFarming,
                         rent: SYSVAR_RENT_PUBKEY,
                         systemProgram: SYSTEM_PROGRAM_ID,
                     })
@@ -103,7 +111,7 @@ export                                                                          
         if (!obligationInfo) {
             console.log("User obligation is not initialized, initializing now");
             instructions.push(
-                await this.program.methods.initObligation({tag: 0, id: 0})
+                await this.lendingProgram.methods.initObligation({ tag: 0, id: 0 })
                     .accounts({
                         obligationOwner: this.provider.wallet.publicKey,
                         feePayer: this.provider.wallet.publicKey,
@@ -114,27 +122,27 @@ export                                                                          
                         ownerUserMetadata: this.userMetadata(),
                         rent: SYSVAR_RENT_PUBKEY,
                         systemProgram: SYSTEM_PROGRAM_ID,
-                    }       
-                ).instruction()
+                    }
+                    ).instruction()
             );
         } else {
             console.log("User obligation is already initialized, refreshing now");
-            const obligationData = await this.program.account.obligation.fetch(obligation) as any;
+            const obligationData = await this.lendingProgram.account.obligation.fetch(obligation) as any;
 
             let isVaultExhausted: boolean;
-            if (obligationData.deposits[0].depositedAmount == 0){
+            if (obligationData.deposits[0].depositedAmount == 0) {
                 isVaultExhausted = true;
             } else {
                 isVaultExhausted = false;
             }
 
             instructions.push(
-                await this.program.methods.refreshObligation()
+                await this.lendingProgram.methods.refreshObligation()
                     .accounts({
                         lendingMarket: this.market,
                         obligation: obligation,
                     })
-                    .remainingAccounts(isVaultExhausted ? [] : [{pubkey: this.reserve, isSigner: false, isWritable: true}])
+                    .remainingAccounts(isVaultExhausted ? [] : [{ pubkey: this.reserve, isSigner: false, isWritable: true }])
                     .instruction()
             )
         }
@@ -142,7 +150,7 @@ export                                                                          
         if (!obligationFarmInfo) {
             console.log("Obligation farm is not initialized, initializing now");
             instructions.push(
-                await this.program.methods.initObligationFarmsForReserve(0)
+                await this.lendingProgram.methods.initObligationFarmsForReserve(0)
                     .accounts({
                         payer: this.provider.wallet.publicKey,
                         owner: this.provider.wallet.publicKey,
@@ -152,7 +160,7 @@ export                                                                          
                         reserveFarmState: this.reserveFarmState,
                         obligationFarm: obligationFarm,
                         lendingMarket: this.market,
-                        farmsProgram: this.kaminoFarm,
+                        farmsProgram: this.kaminoFarming,
                         rent: SYSVAR_RENT_PUBKEY,
                         systemProgram: SYSTEM_PROGRAM_ID,
                     })
@@ -161,7 +169,7 @@ export                                                                          
         } else {
             console.log("Obligation farm is already initialized, refreshing now");
             instructions.push(
-                await this.program.methods.refreshObligationFarmsForReserve(0)
+                await this.lendingProgram.methods.refreshObligationFarmsForReserve(0)
                     .accounts({
                         crank: this.provider.wallet.publicKey,
                         baseAccounts: {
@@ -172,7 +180,7 @@ export                                                                          
                             reserveFarmState: this.reserveFarmState,
                             obligationFarmUserState: obligationFarm,
                         },
-                        farmsProgram: this.kaminoFarm,
+                        farmsProgram: this.kaminoFarming,
                         rent: SYSVAR_RENT_PUBKEY,
                         systemProgram: SYSTEM_PROGRAM_ID,
                     })
@@ -183,7 +191,7 @@ export                                                                          
         // Deposit
         console.log("Depositing...");
         instructions.push(
-            await this.program.methods.depositReserveLiquidityAndObligationCollateralV2(amount)
+            await this.lendingProgram.methods.depositReserveLiquidityAndObligationCollateralV2(amount)
                 .accounts({
                     depositAccounts: {
                         owner: this.provider.wallet.publicKey,
@@ -205,7 +213,7 @@ export                                                                          
                         obligationFarmUserState: obligationFarm,
                         reserveFarmState: this.reserveFarmState,
                     },
-                    farmsProgram: this.kaminoFarm,  
+                    farmsProgram: this.kaminoFarming,
                 }).instruction()
         );
         return instructions;
@@ -216,7 +224,7 @@ export                                                                          
         // Refresh reserve
         console.log("Refreshing reserve...");
         instructions.push(
-            await this.program.methods.refreshReserve()
+            await this.lendingProgram.methods.refreshReserve()
                 .accounts({
                     reserve: this.reserve,
                     lendingMarket: this.market,
@@ -229,28 +237,28 @@ export                                                                          
         )
         // Refresh obligation
         console.log("Refreshing obligation...");
-        const obligation = this.obligation(); 
-        const obligationData = await this.program.account.obligation.fetch(obligation) as any;
+        const obligation = this.obligation();
+        const obligationData = await this.lendingProgram.account.obligation.fetch(obligation) as any;
         let isVaultExhausted: boolean;
-        if (obligationData.deposits[0].depositedAmount == 0){
+        if (obligationData.deposits[0].depositedAmount == 0) {
             isVaultExhausted = true;
         } else {
             isVaultExhausted = false;
         }
         instructions.push(
-            await this.program.methods.refreshObligation()
-                    .accounts({
-                        lendingMarket: this.market,
-                        obligation: obligation,
-                    })
-                    .remainingAccounts(isVaultExhausted ? [] : [{pubkey: this.reserve, isSigner: false, isWritable: true}])
-                    .instruction()
+            await this.lendingProgram.methods.refreshObligation()
+                .accounts({
+                    lendingMarket: this.market,
+                    obligation: obligation,
+                })
+                .remainingAccounts(isVaultExhausted ? [] : [{ pubkey: this.reserve, isSigner: false, isWritable: true }])
+                .instruction()
         )
         // Refresh obligation farms
         console.log("Refreshing obligation farms...");
         const obligationFarm = this.obligationFarm(obligation, this.reserveFarmState);
         instructions.push(
-            await this.program.methods.refreshObligationFarmsForReserve(0)
+            await this.lendingProgram.methods.refreshObligationFarmsForReserve(0)
                 .accounts({
                     crank: this.provider.wallet.publicKey,
                     baseAccounts: {
@@ -261,7 +269,7 @@ export                                                                          
                         reserveFarmState: this.reserveFarmState,
                         obligationFarmUserState: obligationFarm,
                     },
-                    farmsProgram: this.kaminoFarm,
+                    farmsProgram: this.kaminoFarming,
                     rent: SYSVAR_RENT_PUBKEY,
                     systemProgram: SYSTEM_PROGRAM_ID,
                 })
@@ -270,7 +278,7 @@ export                                                                          
         // Withdraw
         console.log("Withdrawing...");
         instructions.push(
-            await this.program.methods.withdrawObligationCollateralAndRedeemReserveCollateralV2(amount)
+            await this.lendingProgram.methods.withdrawObligationCollateralAndRedeemReserveCollateralV2(amount)
                 .accounts({
                     withdrawAccounts: {
                         owner: this.provider.wallet.publicKey,
@@ -292,21 +300,37 @@ export                                                                          
                         obligationFarmUserState: this.obligationFarm(this.obligation(), this.reserveFarmState),
                         reserveFarmState: this.reserveFarmState,
                     },
-                    farmsProgram: this.kaminoFarm,
+                    farmsProgram: this.kaminoFarming,
                 }).instruction()
         )
         return instructions;
     }
 
-    async claim(): Promise<TransactionInstruction[]> {
+    async claim(rewardIndex: BN): Promise<TransactionInstruction[]> {
         let instructions: TransactionInstruction[] = [];
-
+        instructions.push(
+            await this.farmingProgram.methods.harvestReward(rewardIndex)
+                .accounts({
+                    owner: this.provider.wallet.publicKey,
+                    userState: this.obligationFarm(this.obligation(), this.reserveFarmState),
+                    farmState: this.reserveFarmState,
+                    globalConfig: this.globalConfig,
+                    rewardMint: this.rewardMint,
+                    userRewardAta: this.userRewardAta(),
+                    rewardsVault: this.rewardsVault(),
+                    rewardsTreasuryVault: this.rewardsTreasuryVault(),
+                    farmVaultsAuthority: this.farmVaultsAuthority(),
+                    scopePrices: this.scopePrices,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .instruction()
+        )
         return instructions;
     }
 
 
 
-    userMetadata(){
+    userMetadata() {
         return PublicKey.findProgramAddressSync(
             [
                 Buffer.from('user_meta'),
@@ -316,7 +340,7 @@ export                                                                          
         )[0];
     }
 
-    obligation(){
+    obligation() {
         return PublicKey.findProgramAddressSync(
             [
                 Buffer.from([0]),
@@ -330,18 +354,18 @@ export                                                                          
         )[0];
     }
 
-    obligationFarm(obligation: PublicKey, reserveFarmState: PublicKey){
+    obligationFarm(obligation: PublicKey, reserveFarmState: PublicKey) {
         return PublicKey.findProgramAddressSync(
             [
                 Buffer.from('user'),
                 reserveFarmState.toBuffer(),
                 obligation.toBuffer(),
             ],
-            this.kaminoFarm
+            this.kaminoFarming
         )[0];
     }
 
-    liquiditySupplyVault(){
+    liquiditySupplyVault() {
         return PublicKey.findProgramAddressSync(
             [
                 Buffer.from("reserve_liq_supply"),
@@ -352,7 +376,7 @@ export                                                                          
         )[0];
     }
 
-    collateralCTokenMint(){
+    collateralCTokenMint() {
         return PublicKey.findProgramAddressSync(
             [
                 Buffer.from("reserve_coll_mint"),
@@ -363,7 +387,7 @@ export                                                                          
         )[0];
     }
 
-    collateralSupplyVault(){
+    collateralSupplyVault() {
         return PublicKey.findProgramAddressSync(
             [
                 Buffer.from("reserve_coll_supply"),
@@ -374,7 +398,7 @@ export                                                                          
         )[0];
     }
 
-    lendingMarketAuthority(){
+    lendingMarketAuthority() {
         return PublicKey.findProgramAddressSync(
             [
                 Buffer.from("lma"),
@@ -382,5 +406,46 @@ export                                                                          
             ],
             this.kaminoLending
         )[0];
+    }
+
+    rewardsVault() {
+        return PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("rvault"),
+                this.reserveFarmState.toBuffer(),
+                this.rewardMint.toBuffer(),
+            ],
+            this.kaminoFarming
+        )[0];
+    }
+
+    rewardsTreasuryVault() {
+        return PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("tvault"),
+                this.globalConfig.toBuffer(),
+                this.rewardMint.toBuffer(),
+            ],
+            this.kaminoFarming
+        )[0];
+    }
+
+    farmVaultsAuthority() {
+        return PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("vaults_auth"),
+                this.reserveFarmState.toBuffer(),
+            ],
+            this.kaminoFarming
+        )[0];
+    }
+
+    userRewardAta() {
+        return getAssociatedTokenAddressSync(
+            this.rewardMint,
+            this.provider.wallet.publicKey,
+            false,
+            TOKEN_PROGRAM_ID
+        );
     }
 }

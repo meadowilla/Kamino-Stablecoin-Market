@@ -1,5 +1,6 @@
 import {Kamino} from './draft';
-import kaminoLendingIdl from './kamino_lending.json';
+import kaminoLendingIdl from './target/idl/kamino_lending.json'
+import kaminoFarmingIdl from './target/idl/kamino_farming.json';
 import {Program, AnchorProvider} from "@project-serum/anchor";
 import {Connection} from "@solana/web3.js";
 import * as anchor from '@coral-xyz/anchor';
@@ -12,9 +13,11 @@ const connection = new Connection('https://api.mainnet-beta.solana.com', 'confir
 const provider = new AnchorProvider(connection, new anchor.Wallet(wallet), {
   commitment: 'confirmed',
 });
-const program = new Program(kaminoLendingIdl as any, kaminoLendingIdl.metadata.address, provider);
+const lendingProgram = new Program(kaminoLendingIdl as any, kaminoLendingIdl.metadata.address, provider);
+const farmingProgram = new Program(kaminoFarmingIdl as any, kaminoFarmingIdl.metadata.address, provider);
 const kamino = new Kamino(
-    program,
+    lendingProgram,
+    farmingProgram,
     provider,
     "JPL Market",
     "USDC",
