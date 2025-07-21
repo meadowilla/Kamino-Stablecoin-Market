@@ -32,7 +32,7 @@ export class Kamino {
             this.mint = mints.get(mint) ?? (() => { throw new Error(`Mint not found: ${mint}`); })();
             this.reserve = reserves.get(market)?.get(mint) ?? (() => { throw new Error(`Reserve not found for market: ${market}, mint: ${mint}`); })();
             this.reserveFarmState = reserveFarmStates.get(market)?.get(mint) ?? (() => { throw new Error(`Reserve farm state not found for market: ${market}, mint: ${mint}`); })();
-            this.rewardMint = rewardMints.get(market)?.get(mint)?? (() => { throw new Error(`Reward mint not found for market: ${market}, mint: ${mint}`); })();
+            this.rewardMint = rewardMints.get(market)?.get(mint)?? undefined;
         } catch (error) {
             throw error;
         }
@@ -271,7 +271,7 @@ export class Kamino {
 
     async claim(rewardIndex: BN): Promise<TransactionInstruction[]> {
         if (!this.rewardMint) {
-            throw new Error("Reward mint does not exist for this market");
+            throw new Error("There is no reward mint for this market");
         }
 
         let instructions: TransactionInstruction[] = [];

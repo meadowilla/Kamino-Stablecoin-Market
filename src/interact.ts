@@ -20,7 +20,7 @@ const kamino = new Kamino(
     farmingProgram,
     provider,
     "Main Market",
-    "USDS",
+    "USDG",
 );
 
 async function deposit() {
