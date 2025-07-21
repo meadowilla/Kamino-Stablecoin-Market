@@ -1,4 +1,4 @@
-import { createAssociatedTokenAccount, createAssociatedTokenAccountInstruction, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { createAssociatedTokenAccountInstruction, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, TransactionInstruction, SYSVAR_INSTRUCTIONS_PUBKEY, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 import { markets, mints, reserves, reserveFarmStates, rewardMints } from "./retrieve_rand_addr";
 import { BN } from "@coral-xyz/anchor";
@@ -19,7 +19,7 @@ export class Kamino {
     mint: PublicKey;
     reserve: PublicKey; // per market, per mint
     reserveFarmState: PublicKey; // per reserve
-    rewardMint: PublicKey;
+    rewardMint: any;
 
     constructor(lendingProgram: Program<KaminoLending>, farmingProgram: Program<KaminoFarming>, provider: AnchorProvider, market: string, mint: string) {
         this.lendingProgram = lendingProgram;
@@ -32,7 +32,7 @@ export class Kamino {
             this.mint = mints.get(mint) ?? (() => { throw new Error(`Mint not found: ${mint}`); })();
             this.reserve = reserves.get(market)?.get(mint) ?? (() => { throw new Error(`Reserve not found for market: ${market}, mint: ${mint}`); })();
             this.reserveFarmState = reserveFarmStates.get(market)?.get(mint) ?? (() => { throw new Error(`Reserve farm state not found for market: ${market}, mint: ${mint}`); })();
-            this.rewardMint = rewardMints.get(market)?.get(mint)?? (() => { throw new Error(`Reward mint not found for market: ${market}`); })();
+            this.rewardMint = rewardMints.get(market)?.get(mint)?? (() => { throw new Error(`Reward mint not found for market: ${market}, mint: ${mint}`); })();
         } catch (error) {
             throw error;
         }
@@ -270,6 +270,10 @@ export class Kamino {
     }
 
     async claim(rewardIndex: BN): Promise<TransactionInstruction[]> {
+        if (!this.rewardMint) {
+            throw new Error("Reward mint does not exist for this market");
+        }
+
         let instructions: TransactionInstruction[] = [];
         const userRewardAta = this.userRewardAta();
         const userRewardAtaInfo = await this.provider.connection.getAccountInfo(userRewardAta);

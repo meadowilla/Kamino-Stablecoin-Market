@@ -140,6 +140,6 @@ async function claim() {
     }
 }
 // Execute the main function
-deposit().catch(console.error);
+// deposit().catch(console.error);
 // withdraw().catch(console.error);
-// claim().catch(console.error);
+claim().catch(console.error);
