@@ -27,11 +27,15 @@ export class Kamino {
         this.kaminoLending = lendingProgram.programId;
         this.kaminoFarming = farmingProgram.programId;
         this.provider = provider;
-        this.market = markets.get(market) ?? (() => { throw new Error(`Market not found: ${market}`); })();
-        this.mint = mints.get(mint) ?? (() => { throw new Error(`Mint not found: ${mint}`); })();
-        this.reserve = reserves.get(market)?.get(mint) ?? (() => { throw new Error(`Reserve not found for market: ${market}, mint: ${mint}`); })();
-        this.reserveFarmState = reserveFarmStates.get(market)?.get(mint) ?? (() => { throw new Error(`Reserve farm state not found for market: ${market}, mint: ${mint}`); })();
-        this.rewardMint = rewardMints.get(market)?.get(mint)?? (() => { throw new Error(`Reward mint not found for market: ${market}`); })();
+        try {
+            this.market = markets.get(market) ?? (() => { throw new Error(`Market not found: ${market}`); })();
+            this.mint = mints.get(mint) ?? (() => { throw new Error(`Mint not found: ${mint}`); })();
+            this.reserve = reserves.get(market)?.get(mint) ?? (() => { throw new Error(`Reserve not found for market: ${market}, mint: ${mint}`); })();
+            this.reserveFarmState = reserveFarmStates.get(market)?.get(mint) ?? (() => { throw new Error(`Reserve farm state not found for market: ${market}, mint: ${mint}`); })();
+            this.rewardMint = rewardMints.get(market)?.get(mint)?? (() => { throw new Error(`Reward mint not found for market: ${market}`); })();
+        } catch (error) {
+            throw error;
+        }
 
         // console.log("Kamino initialized with:");
         // console.log("Market:", this.market.toString());
