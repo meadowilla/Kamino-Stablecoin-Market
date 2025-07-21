@@ -19,8 +19,8 @@ const kamino = new Kamino(
     lendingProgram,
     farmingProgram,
     provider,
-    "JPL Market",
-    "USDC",
+    "Main Market",
+    "USDS",
 );
 
 async function deposit() {
@@ -37,11 +37,11 @@ async function deposit() {
             console.log("Please fund your wallet:", wallet.publicKey.toString());
             return;
         }
-        
-        // Example usage - depositing 0.5 USDC (500000 micro-USDC)
-        const amount = new anchor.BN(500000); // 0.5 USDC in micro units
-        console.log("Depositing amount:", amount.toString(), "micro-USDC");
-        
+
+        // Example usage - depositing 5 USDS
+        const amount = new anchor.BN(5000000); // 5 USDS in micro units
+        console.log("Depositing amount:", amount.toString(), "micro-USDS");
+
         const instructions = await kamino.deposit(amount);
         console.log("Deposit instructions created:", instructions.length, "instructions");
         
@@ -140,6 +140,6 @@ async function claim() {
     }
 }
 // Execute the main function
-// deposit().catch(console.error);
+deposit().catch(console.error);
 // withdraw().catch(console.error);
-claim().catch(console.error);
+// claim().catch(console.error);

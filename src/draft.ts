@@ -67,47 +67,6 @@ export class Kamino {
         const obligationFarmInfo = await this.lendingProgram.provider.connection.getAccountInfo(obligationFarm);
         // console.log("Obligation farm info:", obligationFarmInfo);
 
-        if (!obligationFarmInfo) {
-            console.log("Obligation farm is not initialized, initializing now");
-            instructions.push(
-                await this.lendingProgram.methods.initObligationFarmsForReserve(0)
-                    .accounts({
-                        payer: this.provider.wallet.publicKey,
-                        owner: this.provider.wallet.publicKey,
-                        obligation: obligation,
-                        lendingMarketAuthority: this.lendingMarketAuthority(),
-                        reserve: this.reserve,
-                        reserveFarmState: this.reserveFarmState,
-                        obligationFarm: obligationFarm,
-                        lendingMarket: this.market,
-                        farmsProgram: this.kaminoFarming,
-                        rent: SYSVAR_RENT_PUBKEY,
-                        systemProgram: SYSTEM_PROGRAM_ID,
-                    })
-                    .instruction()
-            );
-        } else {
-            console.log("Obligation farm is already initialized, refreshing now");
-            instructions.push(
-                await this.lendingProgram.methods.refreshObligationFarmsForReserve(0)
-                    .accounts({
-                        crank: this.provider.wallet.publicKey,
-                        baseAccounts: {
-                            obligation: obligation,
-                            lendingMarketAuthority: this.lendingMarketAuthority(),
-                            lendingMarket: this.market,
-                            reserve: this.reserve,
-                            reserveFarmState: this.reserveFarmState,
-                            obligationFarmUserState: obligationFarm,
-                        },
-                        farmsProgram: this.kaminoFarming,
-                        rent: SYSVAR_RENT_PUBKEY,
-                        systemProgram: SYSTEM_PROGRAM_ID,
-                    })
-                    .instruction()
-            );
-        }
-
         if (!obligationInfo) {
             console.log("User obligation is not initialized, initializing now");
             instructions.push(
