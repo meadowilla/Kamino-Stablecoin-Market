@@ -107,6 +107,39 @@ async function withdraw() {
     }
 }
 
+async function claim() {
+    try {
+        console.log("Starting claim interaction...");
+        console.log("Wallet public key:", wallet.publicKey.toString());
+        
+        // Check wallet balance first
+        const balance = await connection.getBalance(wallet.publicKey);
+        console.log("Wallet SOL balance:", balance / anchor.web3.LAMPORTS_PER_SOL, "SOL");
+        
+        if (balance === 0) {
+            console.warn("⚠️  Wallet has no SOL balance. You need SOL for transaction fees!");
+            console.log("Please fund your wallet:", wallet.publicKey.toString());
+            return;
+        }
+        
+        const instructions = await kamino.claim(new anchor.BN(0));
+        console.log("Claim instructions created:", instructions.length, "instructions");
+        
+        // Create and send transaction
+        const transaction = new anchor.web3.Transaction().add(...instructions);
+        
+        // Get recent blockhash
+        const { blockhash } = await connection.getLatestBlockhash();
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = wallet.publicKey;
+        
+        const signature = await provider.sendAndConfirm(transaction, [wallet]);
+        console.log("✅ Transaction successful! Signature:", signature);
+    } catch (error) {
+        console.error("❌ Error during claim:", error);
+    }
+}
 // Execute the main function
 // deposit().catch(console.error);
-withdraw().catch(console.error);
+// withdraw().catch(console.error);
+claim().catch(console.error);

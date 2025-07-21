@@ -1,21 +1,4 @@
 import { PublicKey} from "@solana/web3.js";
-import { SYSTEM_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/native/system";
-import {fetchEncodedAccount, createSolanaRpc, address} from "@solana/kit";
-import * as anchor from '@coral-xyz/anchor';
-import * as fs from 'fs';
-
-const LENDING_MARKET_AUTH = Buffer.from("lma");
-const RESERVE_LIQ_SUPPLY = Buffer.from("reserve_liq_supply");
-const FEE_RECEIVER = Buffer.from("fee_receiver");
-const RESERVE_COLL_MINT = Buffer.from("reserve_coll_mint");
-const RESERVE_COLL_SUPPLY = Buffer.from("reserve_coll_supply");
-const BASE_SEED_REFERRER_TOKEN_STATE = Buffer.from("referrer_acc");
-const GLOBAL_CONFIG_STATE = Buffer.from("global_config");
-
-const programId = new PublicKey("KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD");
-// const farmProgramId = new PublicKey("FarmsPZpWu9i7Kky8tPN37rs2TpmMrAZrC7S7vJa91Hr");
-const market = new PublicKey("DxXdAyU3kCjnyggvHmY5nAwg5cRbbmdyX3npfDMjjMek");
-const mint = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
 
 export const markets = new Map<string, PublicKey>([
   ["Maple Market", new PublicKey("6WEGfej9B9wjxRs6t4BYpb9iCXd8CpTpJ8fVSNzHCC5y")],
@@ -109,11 +92,11 @@ export const reserveFarmStates = new Map<string, Map<string, PublicKey>>();
 reserveFarmStates.set("Maple Market", new Map([
   ["USDC", new PublicKey("6Y9fzrWzGZaxdAJ2eWRg9UZpL3kqPDiVXAb67KJpWdUg")],
   ["USDG", new PublicKey("J7YoW8Sr65uDbDoJ8abg2VJTGQ96bwwVaCqd2gunvp35")],
-  ["USDS", new PublicKey("J7YoW8Sr65uDbDoJ8abg2VJTGQ96bwwVaCqd2gunvp35")], // ??? why it's the same as USDG?
+  ["USDS", new PublicKey("35aAYJ31KUuX86ggq1VEbW9fGcWW6phAYbYrFKL4eenB")], // ??? why it's the same as USDG?
 ]));
 reserveFarmStates.set("Main Market", new Map([
   ["USDC", new PublicKey("JAvnB9AKtgPsTEoKmn24Bq64UMoYcrtWtq42HHBdsPkh")], 
-  ["USDG", new PublicKey("13PFMegtPzKi9xPTk6fzDGs6BpgnPUnNZwfXZE1GRt8X")],
+  ["USDG", new PublicKey("KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD")],  // 13PFMegtPzKi9xPTk6fzDGs6BpgnPUnNZwfXZE1GRt8X
   ["USDS", new PublicKey("67L8BZe5PjuJz5CXqcsp1NXfNHoAZ1qPYUrxT7Cj2iUr")],
   ["USDT", new PublicKey("5pCqu9RFdL6QoN7KK4gKnAU6CjQFJot8nU7wpFK8Zwou")],
   ["FDUSD", new PublicKey("AJi7o8DdUEu9tdMV3wdnZn4gHdcpPMohwebWU3dMZ9rn")], 
@@ -165,65 +148,62 @@ reserveFarmStates.set("Apolo Market", new Map([
   // ["USDG", new PublicKey("")], // Too new to have depositing transactions, so no farm state yet
 ]));
 
-function getLendingMarketAuthPDA(programId: PublicKey, lendingMarket: PublicKey): PublicKey {
-  return PublicKey.findProgramAddressSync(
-    [LENDING_MARKET_AUTH, lendingMarket.toBuffer()],
-    programId
-  )[0];
-}
-
-function getInitReservePdas(programId: PublicKey, market: PublicKey, mint: PublicKey) {
-  const feeVault = PublicKey.findProgramAddressSync(
-    [FEE_RECEIVER, market.toBuffer(), mint.toBuffer()],
-    programId
-  )[0];
-
-  const liquiditySupplyVault = PublicKey.findProgramAddressSync(
-    [RESERVE_LIQ_SUPPLY, market.toBuffer(), mint.toBuffer()],
-    programId
-  )[0];
-
-  const collateralCTokenMint = PublicKey.findProgramAddressSync(
-    [RESERVE_COLL_MINT, market.toBuffer(), mint.toBuffer()],
-    programId
-  )[0];
-
-  const collateralSupplyVault = PublicKey.findProgramAddressSync(
-    [RESERVE_COLL_SUPPLY, market.toBuffer(), mint.toBuffer()],
-    programId
-  )[0];
-
-  return {
-    feeVault,
-    liquiditySupplyVault,
-    collateralCTokenMint,
-    collateralSupplyVault
-  };
-}
-
-// function getReferrerTokenStatePDA(programId: PublicKey, referrer: PublicKey, reserve: PublicKey): PublicKey {
-//   return PublicKey.findProgramAddressSync(
-//     [BASE_SEED_REFERRER_TOKEN_STATE, referrer.toBuffer(), reserve.toBuffer()],
-//     programId
-//   )[0];
-// }
-
-function getObligationPDA(authority: PublicKey, market: PublicKey): PublicKey {
-  return PublicKey.findProgramAddressSync(
-    [
-      Buffer.from([0]),
-      Buffer.from([0]),
-      authority.toBuffer(),
-      market.toBuffer(),
-      SYSTEM_PROGRAM_ID.toBuffer(),
-      SYSTEM_PROGRAM_ID.toBuffer()
-    ],
-    programId
-  )[0];
-}
-
-// const auth = getLendingMarketAuthPDA(programId, market);
-// console.log("Lending Market Auth PDA:", auth.toBase58());
-
-// const reservePDAs = getInitReservePdas(programId, market, mint);
-// console.log("Reserve PDAs:", reservePDAs);
+export const rewardMints = new Map<string, Map<string, PublicKey>>();
+rewardMints.set("Maple Market", new Map([
+  ["USDC", new PublicKey("AvZZF1YaZDziPY2RCK4oJrRVrbN3mTD9NL24hPeaZeUj")],
+  ["USDG", new PublicKey("AvZZF1YaZDziPY2RCK4oJrRVrbN3mTD9NL24hPeaZeUj")],
+  ["USDS", new PublicKey("USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA")],
+]));
+rewardMints.set("Main Market", new Map([
+  ["USDC", new PublicKey("DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263")],
+  // ["USDG", new PublicKey("")],
+  ["USDS", new PublicKey("USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA")],
+  ["USDT", new PublicKey("DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263")],
+  ["FDUSD", new PublicKey("9zNQRsGLjNKwCUU5Gq5LR8beUCPzQMVMqKAi3SSZh54u")],
+  // ["PYUSD", new PublicKey("")],
+]));
+rewardMints.set("JPL Market", new Map([
+  ["USDC", new PublicKey("HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3")],
+  // ["USDT", new PublicKey("")],
+  ["PYUSD", new PublicKey("2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo")],
+  ["USDG", new PublicKey("2u1tszSeqZ3qBWF3uNGPFc8TzMk2tdiwknnRMWGWjGWH")],
+]));
+rewardMints.set("Adrena Market", new Map([
+  ["USDC", new PublicKey("AuQaustGiaqxRvj2gtCdrd22PBzTn8kM3kEPEkZCtuDw")],
+]));
+rewardMints.set("Fartcoin Market", new Map([
+  // ["USDC", new PublicKey("")],
+  // ["USDT", new PublicKey("")],
+]));
+rewardMints.set("BONK Market", new Map([
+  // ["USDC", new PublicKey("")],
+  // ["USDT", new PublicKey("")],
+  // ["USDG", new PublicKey("")],
+]));
+rewardMints.set("Bitcoin Market", new Map([
+  // ["USDC", new PublicKey("")],
+  // ["FDUSD", new PublicKey("")],
+  // ["USDT", new PublicKey("")],
+  // ["USDG", new PublicKey("")],
+]));
+rewardMints.set("JTO Market", new Map([
+  // ["USDC", new PublicKey("")],
+  // ["USDT", new PublicKey("")],
+  // ["USDG", new PublicKey("")],
+]));
+rewardMints.set("Jupiter Market", new Map([ 
+  // ["USDC", new PublicKey("")],
+  // ["USDT", new PublicKey("")],
+  // ["USDG", new PublicKey("")],
+]));
+rewardMints.set("Ethena Market", new Map([
+  // ["USDE", new PublicKey("")],
+  ["PYUSD", new PublicKey("2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo")],
+]));  
+rewardMints.set("Altcoin Market", new Map([
+  ["USDC", new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v")],
+]));
+rewardMints.set("Apolo Market", new Map([
+  // ["USDC", new PublicKey("")],
+  // ["USDG", new PublicKey("")], // Too new to have Depositing transactions, so no reward mint yet
+]));

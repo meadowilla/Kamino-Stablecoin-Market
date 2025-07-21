@@ -1,4 +1,4 @@
-import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { createAssociatedTokenAccount, createAssociatedTokenAccountInstruction, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, TransactionInstruction, SYSVAR_INSTRUCTIONS_PUBKEY, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 import { markets, mints, reserves, reserveFarmStates, rewardMints } from "./retrieve_rand_addr";
 import { BN } from "@coral-xyz/anchor";
@@ -308,6 +308,21 @@ export class Kamino {
 
     async claim(rewardIndex: BN): Promise<TransactionInstruction[]> {
         let instructions: TransactionInstruction[] = [];
+        const userRewardAta = this.userRewardAta();
+        const userRewardAtaInfo = await this.provider.connection.getAccountInfo(userRewardAta);
+        if (!userRewardAtaInfo) {
+            console.log("User reward ATA not found, creating it now");
+            instructions.push(
+                createAssociatedTokenAccountInstruction(
+                    this.provider.wallet.publicKey,
+                    userRewardAta,
+                    this.provider.wallet.publicKey,
+                    this.rewardMint,
+                ));
+        } else {
+            console.log("User reward ATA already exists, skipping creation");
+        }
+
         instructions.push(
             await this.farmingProgram.methods.harvestReward(rewardIndex)
                 .accounts({
@@ -433,7 +448,7 @@ export class Kamino {
     farmVaultsAuthority() {
         return PublicKey.findProgramAddressSync(
             [
-                Buffer.from("vaults_auth"),
+                Buffer.from("authority"),
                 this.reserveFarmState.toBuffer(),
             ],
             this.kaminoFarming
