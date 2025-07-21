@@ -4,8 +4,8 @@ import { markets, mints, reserves, reserveFarmStates, rewardMints } from "./retr
 import { BN } from "@coral-xyz/anchor";
 import { Program, AnchorProvider } from "@project-serum/anchor";
 import { SYSTEM_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/native/system";
-import { KaminoLending } from "./target/types/kamino_lending";
-import { KaminoFarming } from "./target/types/kamino_farming";
+import { KaminoLending } from "../target/types/kamino_lending";
+import { KaminoFarming } from "../target/types/kamino_farming";
 
 export class Kamino {
     kaminoLending: PublicKey;

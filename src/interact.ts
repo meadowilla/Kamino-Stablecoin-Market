@@ -1,6 +1,6 @@
 import {Kamino} from './draft';
-import kaminoLendingIdl from './target/idl/kamino_lending.json'
-import kaminoFarmingIdl from './target/idl/kamino_farming.json';
+import kaminoLendingIdl from '../target/idl/kamino_lending.json'
+import kaminoFarmingIdl from '../target/idl/kamino_farming.json';
 import {Program, AnchorProvider} from "@project-serum/anchor";
 import {Connection} from "@solana/web3.js";
 import * as anchor from '@coral-xyz/anchor';
