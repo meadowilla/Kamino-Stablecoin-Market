@@ -20,7 +20,7 @@ const kamino = new Kamino(
     farmingProgram,
     provider,
     "Main Market",
-    "USDG",
+    "PYUSD",
 );
 
 async function deposit() {
@@ -122,7 +122,7 @@ async function claim() {
             return;
         }
         
-        const instructions = await kamino.claim(new anchor.BN(0));
+        const instructions = await kamino.claim();
         console.log("Claim instructions created:", instructions.length, "instructions");
         
         // Create and send transaction
@@ -139,7 +139,9 @@ async function claim() {
         console.error("❌ Error during claim:", error);
     }
 }
+
 // Execute the main function
 // deposit().catch(console.error);
 // withdraw().catch(console.error);
 claim().catch(console.error);
+

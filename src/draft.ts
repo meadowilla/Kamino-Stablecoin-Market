@@ -19,7 +19,6 @@ export class Kamino {
     mint: PublicKey;
     reserve: PublicKey; // per market, per mint
     reserveFarmState: PublicKey; // per reserve
-    rewardMint: any;
 
     constructor(lendingProgram: Program<KaminoLending>, farmingProgram: Program<KaminoFarming>, provider: AnchorProvider, market: string, mint: string) {
         this.lendingProgram = lendingProgram;
@@ -32,7 +31,6 @@ export class Kamino {
             this.mint = mints.get(mint) ?? (() => { throw new Error(`Mint not found: ${mint}`); })();
             this.reserve = reserves.get(market)?.get(mint) ?? (() => { throw new Error(`Reserve not found for market: ${market}, mint: ${mint}`); })();
             this.reserveFarmState = reserveFarmStates.get(market)?.get(mint) ?? (() => { throw new Error(`Reserve farm state not found for market: ${market}, mint: ${mint}`); })();
-            this.rewardMint = rewardMints.get(market)?.get(mint)?? undefined;
         } catch (error) {
             throw error;
         }
@@ -269,48 +267,53 @@ export class Kamino {
         return instructions;
     }
 
-    async claim(rewardIndex: BN): Promise<TransactionInstruction[]> {
-        if (!this.rewardMint) {
-            throw new Error("There is no reward mint for this market");
+    async claim(): Promise<TransactionInstruction[]> {
+        const farmStateData = await this.farmingProgram.account.farmState.fetch(this.reserveFarmState);
+        const numRewardTokens = farmStateData.numRewardTokens;
+        if (numRewardTokens.isZero()) {
+            throw new Error("⚠️  No reward tokens available to claim");
         }
-
+        const rewardMints = farmStateData.rewardInfos as { token: { mint: PublicKey } }[];
         let instructions: TransactionInstruction[] = [];
-        const userRewardAta = this.userRewardAta();
-        const userRewardAtaInfo = await this.provider.connection.getAccountInfo(userRewardAta);
-        if (!userRewardAtaInfo) {
-            console.log("User reward ATA not found, creating it now");
-            instructions.push(
-                createAssociatedTokenAccountInstruction(
-                    this.provider.wallet.publicKey,
-                    userRewardAta,
-                    this.provider.wallet.publicKey,
-                    this.rewardMint,
-                ));
-        } else {
-            console.log("User reward ATA already exists, skipping creation");
-        }
 
-        instructions.push(
-            await this.farmingProgram.methods.harvestReward(rewardIndex)
-                .accounts({
-                    owner: this.provider.wallet.publicKey,
-                    userState: this.obligationFarm(this.obligation(), this.reserveFarmState),
-                    farmState: this.reserveFarmState,
-                    globalConfig: this.globalConfig,
-                    rewardMint: this.rewardMint,
-                    userRewardAta: this.userRewardAta(),
-                    rewardsVault: this.rewardsVault(),
-                    rewardsTreasuryVault: this.rewardsTreasuryVault(),
-                    farmVaultsAuthority: this.farmVaultsAuthority(),
-                    scopePrices: this.scopePrices,
-                    tokenProgram: TOKEN_PROGRAM_ID,
-                })
-                .instruction()
-        )
+        for (let i = 0; i < numRewardTokens.toNumber(); i++) {
+            const rewardMint = rewardMints[i].token.mint;
+            const userRewardAta = this.userRewardAta(rewardMint);
+            const userRewardAtaInfo = await this.provider.connection.getAccountInfo(userRewardAta);
+
+            if (!userRewardAtaInfo) {
+                console.log("User reward ATA not found, creating it now");
+                instructions.push(
+                    createAssociatedTokenAccountInstruction(
+                        this.provider.wallet.publicKey,
+                        userRewardAta,
+                        this.provider.wallet.publicKey,
+                        rewardMint,
+                    ));
+            } else {
+                console.log("User reward ATA already exists, skipping creation");
+            }
+
+            instructions.push(
+                await this.farmingProgram.methods.harvestReward(new BN(i))
+                    .accounts({
+                        owner: this.provider.wallet.publicKey,
+                        userState: this.obligationFarm(this.obligation(), this.reserveFarmState),
+                        farmState: this.reserveFarmState,
+                        globalConfig: this.globalConfig,
+                        rewardMint: rewardMint,
+                        userRewardAta: this.userRewardAta(rewardMint),
+                        rewardsVault: this.rewardsVault(rewardMint),
+                        rewardsTreasuryVault: this.rewardsTreasuryVault(rewardMint),
+                        farmVaultsAuthority: this.farmVaultsAuthority(),
+                        scopePrices: this.scopePrices,
+                        tokenProgram: TOKEN_PROGRAM_ID,
+                    })
+                    .instruction()
+            )
+        }
         return instructions;
     }
-
-
 
     userMetadata() {
         return PublicKey.findProgramAddressSync(
@@ -390,23 +393,23 @@ export class Kamino {
         )[0];
     }
 
-    rewardsVault() {
+    rewardsVault(rewardMint: PublicKey) {
         return PublicKey.findProgramAddressSync(
             [
                 Buffer.from("rvault"),
                 this.reserveFarmState.toBuffer(),
-                this.rewardMint.toBuffer(),
+                rewardMint.toBuffer()
             ],
             this.kaminoFarming
         )[0];
     }
 
-    rewardsTreasuryVault() {
+    rewardsTreasuryVault(rewardMint: PublicKey) {
         return PublicKey.findProgramAddressSync(
             [
                 Buffer.from("tvault"),
                 this.globalConfig.toBuffer(),
-                this.rewardMint.toBuffer(),
+                rewardMint.toBuffer(),
             ],
             this.kaminoFarming
         )[0];
@@ -422,9 +425,9 @@ export class Kamino {
         )[0];
     }
 
-    userRewardAta() {
+    userRewardAta(rewardMint: PublicKey) {
         return getAssociatedTokenAddressSync(
-            this.rewardMint,
+            rewardMint,
             this.provider.wallet.publicKey,
             false,
             TOKEN_PROGRAM_ID
